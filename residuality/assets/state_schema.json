@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/007vasy/skills/residuality/state_schema.json",
+  "title": "Residuality run state",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project",
+    "created_at",
+    "updated_at",
+    "mode",
+    "naive_architecture",
+    "user_stack_facts",
+    "stressors",
+    "attractors_residues",
+    "residue_stack",
+    "history"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "project": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "git_sha": { "type": ["string", "null"] },
+    "mode": { "type": "string", "enum": ["analyze", "wizard", "iterate", "contagion-only"] },
+    "focus": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["security", "cost", "regulatory", "performance", "safety"] },
+      "uniqueItems": true,
+      "default": []
+    },
+    "naive_architecture": { "$ref": "#/$defs/architecture" },
+    "user_stack_facts": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 0,
+      "description": "Concrete tech facts the user has confirmed (e.g. 'Postgres 15', 'NATS JetStream'). Required to be populated before residue derivation; every residue must cite at least one fact."
+    },
+    "stressors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/stressor" }
+    },
+    "attractors_residues": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/attractor_residue" }
+    },
+    "residue_stack": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/residue" }
+    },
+    "contagion": { "$ref": "#/$defs/contagion" },
+    "criticality": { "$ref": "#/$defs/criticality" },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "markdown_path": { "type": "string" },
+        "mermaid_before_path": { "type": "string" },
+        "mermaid_after_path": { "type": "string" },
+        "csv_path": { "type": "string" },
+        "summary_json_path": { "type": "string" }
+      }
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "mode"],
+        "additionalProperties": false,
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "mode": { "type": "string", "enum": ["analyze", "wizard", "iterate", "contagion-only"] },
+          "note": { "type": "string" },
+          "changed_sections": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["naive_architecture", "user_stack_facts", "stressors", "attractors_residues", "residue_stack", "contagion", "criticality", "report", "open_questions", "focus"] }
+          }
+        }
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    }
+  },
+  "$defs": {
+    "architecture": {
+      "type": "object",
+      "required": ["summary", "components", "edges"],
+      "additionalProperties": false,
+      "properties": {
+        "summary": { "type": "string", "minLength": 1 },
+        "business_context": { "type": "string" },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "kind"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^C[0-9]{2,}$" },
+              "name": { "type": "string" },
+              "kind": { "type": "string", "enum": ["service", "datastore", "queue", "client", "external", "human", "device", "edge"] },
+              "responsibilities": { "type": "array", "items": { "type": "string" } },
+              "tech_assumptions": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "kind"],
+            "additionalProperties": false,
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "kind": { "type": "string", "enum": ["sync", "async", "data", "human", "device"] },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "assumptions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "stressor": {
+      "type": "object",
+      "required": ["id", "name", "category", "novelty", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^S[0-9]{2,}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "category": {
+          "type": "string",
+          "enum": ["regulatory", "market", "tech", "human", "adversarial", "environmental", "supply-chain", "scale", "time"]
+        },
+        "novelty": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "description": { "type": "string" },
+        "horizon": { "type": "string", "enum": ["now", "1y", "5y"], "default": "now" },
+        "source": { "type": "string", "enum": ["catalogue", "generated"], "default": "generated" }
+      }
+    },
+    "attractor_residue": {
+      "type": "object",
+      "required": ["stressor_id", "attractor", "residue"],
+      "additionalProperties": false,
+      "properties": {
+        "stressor_id": { "type": "string", "pattern": "^S[0-9]{2,}$" },
+        "attractor": {
+          "type": "object",
+          "required": ["name", "description"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "why_system_drifts_here": { "type": "string" }
+          }
+        },
+        "residue": { "$ref": "#/$defs/residue" }
+      }
+    },
+    "residue": {
+      "type": "object",
+      "required": ["id", "name", "intent", "minimal_change_description", "applies_to_stressors", "stack_fit_citations"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^R[0-9]{2,}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "intent": { "type": "string", "minLength": 1 },
+        "minimal_change_description": { "type": "string", "minLength": 1 },
+        "applies_to_stressors": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^S[0-9]{2,}$" },
+          "minItems": 1,
+          "description": "Theatre-residue guard: residues must cover at least one stressor."
+        },
+        "stack_fit_citations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Each residue cites at least one entry from user_stack_facts it is compatible with. Empty list is a fictional-stack failure."
+        },
+        "source_pattern": { "type": ["string", "null"], "description": "Reference to residue_library.md pattern id, or null if novel." },
+        "estimated_cost": { "type": "string", "enum": ["low", "med", "high"] },
+        "merge_log": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kept_id", "dropped_id", "similarity"],
+            "properties": {
+              "kept_id": { "type": "string" },
+              "dropped_id": { "type": "string" },
+              "similarity": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "contagion": {
+      "type": "object",
+      "required": ["incidence", "stressor_coverage", "residue_load", "coupling_matrix", "brittleness_rank", "hotspots"],
+      "additionalProperties": false,
+      "properties": {
+        "couplings": {
+          "type": "array",
+          "description": "User-supplied coupling pairs that drive coupling_matrix. Each entry is one residue->residue link.",
+          "items": {
+            "type": "object",
+            "required": ["from_residue", "to_residue", "weight", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "from_residue": { "type": "string", "pattern": "^R[0-9]{2,}$" },
+              "to_residue": { "type": "string", "pattern": "^R[0-9]{2,}$" },
+              "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "incidence": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0, "maximum": 1 }
+          },
+          "description": "rows = residues (residue_stack order), cols = stressors (stressors order)"
+        },
+        "stressor_coverage": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "residue_load": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "coupling_matrix": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "description": "rows = cols = residues"
+        },
+        "brittleness_rank": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["residue_id", "score"],
+            "properties": {
+              "residue_id": { "type": "string" },
+              "score": { "type": "number" },
+              "why": { "type": "string" }
+            }
+          }
+        },
+        "hotspots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["residue_id", "reason"],
+            "properties": {
+              "residue_id": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "orphan_residues": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "residues with empty applies_to_stressors — should always be empty in valid state"
+        }
+      }
+    },
+    "criticality": {
+      "type": "object",
+      "required": ["N", "K", "P", "regime"],
+      "additionalProperties": false,
+      "properties": {
+        "N": { "type": "integer", "minimum": 0 },
+        "K": { "type": "number", "minimum": 0 },
+        "P": { "type": "number", "minimum": 0, "maximum": 1 },
+        "regime": { "type": "string", "enum": ["frozen", "edge", "chaotic"] },
+        "deltas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["action", "expected_NKP_shift"],
+            "properties": {
+              "action": { "type": "string" },
+              "expected_NKP_shift": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
